@@ -102,6 +102,10 @@ let Edit = `
             </p>
 
             <p>
+                <a id = "resume"></a>
+            </p>
+
+            <p>
                 <label>Resume (pdf format):</label>
                 <input type = "file" id = "resume" name="uploadResume" />
             </p>
@@ -229,6 +233,7 @@ function router() {
                 var response = JSON.parse(this.responseText)
                 var interview = response.interview
                 var participants = response.participants
+                var resume = response.resume
                 var start_time = interview.start_time.split(":00.000Z")[0]
                 var end_time = interview.end_time.split(":00.000Z")[0]
 
@@ -236,6 +241,10 @@ function router() {
                 document.getElementById("start_time").value = start_time
                 document.getElementById("end_time").value = end_time
                 document.getElementById("participants").value = participants
+                if(resume !== ""){
+                    document.getElementById("resume").innerHTML = "View Resume"
+                    document.getElementById("resume").href = resume
+                }
             }
         };
         xhr.open('GET', `http://localhost:3000/interviews/${request.id}`)
@@ -305,9 +314,6 @@ function router() {
 }
 
 // Listen on hash change:
-window.onhashchange = function() {
-    router();
-}
-
+window.addEventListener('onhashchange', router);
 // Listen on page load:
 window.addEventListener('load', router);

@@ -21,10 +21,14 @@ class InterviewsController < ApplicationController
     def show
         interview = Interview.find(params[:id])
         interview_participants = ""
+        resume = ""
         interview.participants.each do |participant|
             interview_participants += participant.email + ","
         end
-        render json: {interview: interview, participants: interview_participants[0...-1]}
+        if interview.resume_file_name
+            resume = interview.resume.url(:original, false)
+        end
+        render json: {interview: interview, participants: interview_participants[0...-1], resume: resume}
     end
 
     def create
