@@ -2,14 +2,20 @@ class InterviewsController < ApplicationController
     def index
         interviews = Interview.all.order("updated_at desc")
         map_interview_participants = Hash.new
+        map_interview_resumes = Hash.new
         interviews.each do |interview|
             value = ''
             interview.participants.each do |participant|
                 value += participant.email + ', '
             end
             map_interview_participants[interview.id] = value[0...-2]
+            if interview.resume_file_name
+                map_interview_resumes[interview.id] = interview.resume.url(:original, false)
+            else
+                map_interview_resumes[interview.id] = ""
+            end
         end
-        render json: {interviews: interviews, map_interview_participants: map_interview_participants}
+        render json: {interviews: interviews, map_interview_participants: map_interview_participants, map_interview_resumes: map_interview_resumes}
     end
 
     def show
@@ -22,13 +28,14 @@ class InterviewsController < ApplicationController
     end
 
     def create
+        puts params
         interview = Interview.new
         interview.title = params[:title]
         interview.start_time = params[:start_time]
         interview.end_time = params[:end_time]
-        # if !params[:resume].nil?
-        #     interview.resume = params[:resume]
-        # end
+        if !params[:resume].nil?
+            interview.resume = params[:resume]
+        end
         participant_id_array = Array.new
         participants_emails = params[:participants].split(",")
         participants_emails.each do |email|
@@ -74,7 +81,10 @@ class InterviewsController < ApplicationController
         currInterview.title = params[:title]
         currInterview.start_time = params[:start_time]
         currInterview.end_time = params[:end_time]
-		currInterview.id = params[:id]
+        currInterview.id = params[:id]
+        if !params[:resume].nil?
+            currInterview.resume = params[:resume]
+        end
         participant_id_array = Array.new
         participants_emails = params[:participants].split(",")
         participants_emails.each do |email|
@@ -107,7 +117,7 @@ class InterviewsController < ApplicationController
 		end
 		prev_start_time = interview.start_time
 		interview.update(title: currInterview.title, start_time: currInterview.start_time,
-            end_time: currInterview.end_time, participants: currInterview.participants)
+            end_time: currInterview.end_time, participants: currInterview.participants, resume: currInterview.resume)
         if prev_start_time != interview.start_time
             InterviewUpdateJob.perform_later(interview.id)
         end

@@ -67,6 +67,11 @@ let Create = `
                 <input type = "text" id = "participants" />
             </p>
 
+            <p>
+                <label>Resume (pdf format):</label>
+                <input type = "file" id = "resume" name="uploadResume" />
+            </p>
+
             <button type = "submit">Create Interview</button>
         </form>
     </div>
@@ -94,6 +99,11 @@ let Edit = `
             <p>
                 <label>Participants:</label>
                 <input type = "text" id = "participants" />
+            </p>
+
+            <p>
+                <label>Resume (pdf format):</label>
+                <input type = "file" id = "resume" name="uploadResume" />
             </p>
             <button type = "submit">Edit Interview</button>
         </form>
@@ -131,58 +141,85 @@ function router() {
 
     content.innerHTML = page
 
-    var xhr = new XMLHttpRequest()
-
     if(page == Index){
-        xhr.onload = function() {
-            if (this.readyState == 4 && this.status == 200) {
-                var response = JSON.parse(this.responseText)
-                var interviews = response.interviews
-                var map_interview_participants = response.map_interview_participants
-                document.getElementById("index__content").innerHTML = ``
-                for (let index = 0; index < interviews.length; index++) {
-                    document.getElementById("index__content").innerHTML += `
-                    <div class = "interview-container">
-                        <h3>${interviews[index].title}</h3>
-                        <p>Start time: ${interviews[index].start_time}<p>
-                        <p>End time: ${interviews[index].end_time}<p>
-                        <p>Participants: ${map_interview_participants[interviews[index].id]}<p>
-                        <a href = "http://localhost:3000/#/edit/${interviews[index].id}">Edit<a>
-                        <a href = "http://localhost:3000/#/delete/${interviews[index].id}">Delete<a>
-                    </div>
-                    `
+        fetch(`http://localhost:3000/interviews`, {
+            method: 'GET',
+        })
+        .then(
+            function(response){
+                if (response.status !== 200) {
+                    alert('Looks like there was a problem. Status Code: ' + response.status);
+                    return;
                 }
+                response.json().then(function(data) {
+                    var interviews = data.interviews
+                    var map_interview_participants = data.map_interview_participants
+                    var map_interview_resumes = data.map_interview_resumes
+                    document.getElementById("index__content").innerHTML = ``
+                    for (let index = 0; index < interviews.length; index++) {
+                        document.getElementById("index__content").innerHTML += `
+                        <div class = "interview-container">
+                            <h3>${interviews[index].title}</h3>
+                            <p>Start time: ${interviews[index].start_time}<p>
+                            <p>End time: ${interviews[index].end_time}<p>
+                            <p>Participants: ${map_interview_participants[interviews[index].id]}<p>
+                            <a href = "http://localhost:3000/#/edit/${interviews[index].id}">Edit</a>
+                            <a href = "http://localhost:3000/#/delete/${interviews[index].id}">Delete</a>
+                            <a id = "${interviews[index].id}_resume"></a>
+                        </div>
+                        `
+                        if(map_interview_resumes[interviews[index].id] !== ""){
+                            document.getElementById(`${interviews[index].id}_resume`).innerHTML = "View Resume"
+                            document.getElementById(`${interviews[index].id}_resume`).href = map_interview_resumes[interviews[index].id]
+                        }
+                    }
+                });
             }
-        };
-        xhr.open('GET', 'http://localhost:3000/interviews')
-        xhr.send()
+        )
+        .catch(function(err) {
+            console.log('Fetch Error :-S', err);
+        });
     }
     else if(page == Create){
-        function createInterview(){
-            let title = document.getElementById('title'); 
-            let start_time = document.getElementById('start_time'); 
-            let end_time = document.getElementById('end_time');
-            let participants = document.getElementById('participants');
-
-            xhr.onload = function () {
-                var response = JSON.parse(this.responseText);
-                if(response.code == 3000){
-                    console.log(response.message);
-                }
-                else if(response.code == 200){
-                    window.history.pushState({}, null, "http://localhost:3000/");
-                    //window.location.replace("http://localhost:3000/");
-                }
-            };
-            xhr.open("POST", "http://localhost:3000/interviews", true);
-            xhr.setRequestHeader("Content-Type", "application/json");
-            var data = JSON.stringify({ "title": title.value, "start_time": start_time.value, "end_time": end_time.value, "participants": participants.value }); 
-            xhr.send(data);
-        }
         let form = document.getElementById("create-interview-form");
         form.addEventListener("submit", function(event){
             event.preventDefault();
-            createInterview();
+
+            let title = document.getElementById('title');
+            let start_time = document.getElementById('start_time'); 
+            let end_time = document.getElementById('end_time');
+            let participants = document.getElementById('participants');
+            let files = event.target.uploadResume.files
+            let resume = ""
+            if(files.length > 0) resume = files[0]
+
+            let formData = new FormData()
+
+            formData.append("title", title.value)
+            formData.append("start_time", start_time.value)
+            formData.append("end_time", end_time.value)
+            formData.append("participants", participants.value)
+            formData.append("resume", resume)
+
+            fetch('http://localhost:3000/interviews', {
+                method: 'POST',
+                body: formData
+            })
+            .then(
+                function(response){
+                    if (response.status !== 200) {
+                        alert('Looks like there was a problem. Status Code: ' + response.status);
+                        return;
+                    }
+                    response.json().then(function(data) {
+                        if(data.code === 3000) alert(data.message);
+                        else window.history.pushState({}, null, "http://localhost:3000/");
+                    });
+                }
+            )
+            .catch(function(err) {
+              console.log('Fetch Error :-S', err);
+            });
         });
     }
     else if(page == Edit){
@@ -204,40 +241,66 @@ function router() {
         xhr.open('GET', `http://localhost:3000/interviews/${request.id}`)
         xhr.send()
 
-        function editInterview(){
-            let title = document.getElementById('title'); 
-            let start_time = document.getElementById('start_time'); 
-            let end_time = document.getElementById('end_time');
-            let participants = document.getElementById('participants');
-
-            xhr.onload = function () {
-                var response = JSON.parse(this.responseText);
-                if(response.code == 3000){
-                    console.log(response.message);
-                }
-                else if(response.code == 200){
-                    window.history.pushState({}, null, "http://localhost:3000/");
-                    //window.location.replace("http://localhost:3000/");
-                }
-            };
-            xhr.open("PUT", `http://localhost:3000/interviews/${request.id}`, true);
-            xhr.setRequestHeader("Content-Type", "application/json");
-            var data = JSON.stringify({ "title": title.value, "start_time": start_time.value, "end_time": end_time.value, "participants": participants.value }); 
-            xhr.send(data);
-        }
         let form = document.getElementById("edit-interview-form");
         form.addEventListener("submit", function(event){
             event.preventDefault();
-            editInterview();
+
+            let title = document.getElementById('title');
+            let start_time = document.getElementById('start_time'); 
+            let end_time = document.getElementById('end_time');
+            let participants = document.getElementById('participants');
+            let files = event.target.uploadResume.files
+            let resume = ""
+            if(files.length > 0) resume = files[0]
+
+            let formData = new FormData()
+
+            formData.append("title", title.value)
+            formData.append("start_time", start_time.value)
+            formData.append("end_time", end_time.value)
+            formData.append("participants", participants.value)
+            formData.append("resume", resume)
+
+            fetch(`http://localhost:3000/interviews/${request.id}`, {
+                method: 'PUT',
+                body: formData
+            })
+            .then(
+                function(response){
+                    if (response.status !== 200) {
+                        alert('Looks like there was a problem. Status Code: ' + response.status);
+                        return;
+                    }
+                    response.json().then(function(data) {
+                        if(data.code === 3000) alert(data.message);
+                        else window.history.pushState({}, null, "http://localhost:3000/");
+                    });
+                }
+            )
+            .catch(function(err) {
+              console.log('Fetch Error :-S', err);
+            });
         });
     }
     else if(page == Delete){
-        xhr.onload = function() {
-            window.history.pushState({}, null, "http://localhost:3000/");
-            //window.location.replace("http://localhost:3000/");
-        };
-        xhr.open('DELETE', `http://localhost:3000/interviews/${request.id}`);
-        xhr.send(null);
+        fetch(`http://localhost:3000/interviews/${request.id}`, {
+            method: 'DELETE',
+        })
+        .then(
+            function(response){
+                if (response.status !== 200) {
+                    alert('Looks like there was a problem. Status Code: ' + response.status);
+                    return;
+                }
+                response.json().then(function(data) {
+                    if(data.code === 3000) alert(data.message);
+                    else window.history.pushState({}, null, "http://localhost:3000/");
+                });
+            }
+        )
+        .catch(function(err) {
+            console.log('Fetch Error :-S', err);
+        });
     }
 }
 
