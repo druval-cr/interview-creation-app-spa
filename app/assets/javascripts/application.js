@@ -11,7 +11,6 @@
 // about supported directives.
 //
 //= require rails-ujs
-//= require turbolinks
 //= require_tree .
 
 "use strict";
@@ -128,6 +127,7 @@ const routes = {
 
 function router() {
 
+    console.log("router");
     // Lazy load view element:
     const content = null || document.getElementById('main-container');
 
@@ -314,6 +314,11 @@ function router() {
 }
 
 // Listen on hash change:
-window.addEventListener('onhashchange', router);
+// window.addEventListener('hashchange', function(){
+//     console.log("rr");
+// });
+window.onhashchange = router;
 // Listen on page load:
-window.addEventListener('load', router);
+window.addEventListener('load', function(){
+    router();
+});
